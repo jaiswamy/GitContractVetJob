@@ -1,0 +1,67 @@
+version : '2.4'
+services:
+  db:
+    image: mysql:5.6
+    container_name: convetdb
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: mysql123
+      MYSQL_DATABASE: db_contractvetjob
+      MYSQL_USER: statejob
+      MYSQL_PASSWORD: StateJob@HitpL2022
+    ports:
+      - "3311:3306"
+    volumes:
+     - ./Dump20250610.sql:/docker-entrypoint-initdb.d/Dump20250610.sql
+     - ./mysql/data:/var/lib/mysql
+     - ./mysql/conf.d:/etc/mysql/conf.d
+    networks:
+      - tomcat-network-contract
+    healthcheck:
+      test: ["CMD-SHELL", "mysql -u root -pmysql123 -e 'SELECT 1'"]
+      interval: 10s
+      retries: 10
+      start_period: 40s
+
+
+  convetapp:
+    build:
+      context: .
+    image: convetimage:latest
+    container_name: convetapp
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    mem_limit: 512m
+    environment:
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_DB: db_contractvetjob
+      MYSQL_USER: statejob
+      MYSQL_PASSWORD: StateJob@HitpL2022
+      GRAILS_SERVER_URL: https://ctvetjob.kvafsu.edu.in
+    ports:
+      - "8093:8080"
+    volumes:
+      - ./VetState:/opt/VetState
+    networks:
+      - tomcat-network-contract
+
+  httpd:
+    image: httpd:2.4
+    container_name: httpd
+    restart: always
+    ports:
+      - "83:80"
+    volumes:
+      - ./httpd/conf:/usr/local/apache2/conf.d
+    depends_on:
+      - convetapp
+    networks:
+      - tomcat-network-contract
+
+
+networks:
+  tomcat-network-contract:
+    driver: bridge
